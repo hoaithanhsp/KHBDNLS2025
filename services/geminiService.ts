@@ -1,6 +1,11 @@
-import { GoogleGenerativeAI } from '@google/genai';
 import { LessonInfo, ProcessingOptions } from '../types';
 import { NLS_FRAMEWORK_DATA, SYSTEM_INSTRUCTION } from '../constants';
+
+// Dynamic import để tránh lỗi build
+async function getGeminiAI(apiKey: string) {
+  const { GoogleGenerativeAI } = await import('@google/genai');
+  return new GoogleGenerativeAI(apiKey);
+}
 
 export async function generateNLSLessonPlan(
   lessonInfo: LessonInfo,
@@ -13,7 +18,7 @@ export async function generateNLSLessonPlan(
 
   try {
     // Khởi tạo Gemini với API key của user
-    const genAI = new GoogleGenerativeAI(userApiKey);
+    const genAI = await getGeminiAI(userApiKey);
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash-exp',
       systemInstruction: SYSTEM_INSTRUCTION
