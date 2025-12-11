@@ -1,11 +1,8 @@
 import { LessonInfo, ProcessingOptions } from '../types';
 import { NLS_FRAMEWORK_DATA, SYSTEM_INSTRUCTION } from '../constants';
 
-// Dynamic import để tránh lỗi build
-async function getGeminiAI(apiKey: string) {
-  const { GoogleAIFileManager, GoogleGenerativeAI } = await import('@google/generative-ai');
-  return new GoogleGenerativeAI(apiKey);
-}
+// ✅ Import trực tiếp - Không cần dynamic import
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function generateNLSLessonPlan(
   lessonInfo: LessonInfo,
@@ -17,8 +14,9 @@ export async function generateNLSLessonPlan(
   }
 
   try {
-    // Khởi tạo Gemini với API key của user
-    const genAI = await getGeminiAI(userApiKey);
+    // ✅ Khởi tạo trực tiếp - Không cần async function wrapper
+    const genAI = new GoogleGenerativeAI(userApiKey);
+    
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash-exp',
       systemInstruction: SYSTEM_INSTRUCTION
@@ -38,16 +36,13 @@ ${lessonInfo.content}
     // Thêm PPCT nếu có
     if (lessonInfo.distributionContent && lessonInfo.distributionContent.trim().length > 0) {
       userPrompt += `
-
 PHÂN PHỐI CHƯƠNG TRÌNH (PPCT) - THAM KHẢO:
 ${lessonInfo.distributionContent}
-
 LƯU Ý: Nếu PPCT có quy định cụ thể về năng lực số cho bài học này, hãy ưu tiên tuân thủ PPCT.
 `;
     }
 
     userPrompt += `
-
 KHUNG NĂNG LỰC SỐ:
 ${NLS_FRAMEWORK_DATA}
 
@@ -75,7 +70,7 @@ YÊU CẦU:
 
     // Gọi API
     const result = await model.generateContent(userPrompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
 
     if (!text || text.trim().length === 0) {
@@ -83,15 +78,16 @@ YÊU CẦU:
     }
 
     return text;
+
   } catch (error: any) {
     console.error('Gemini Service Error:', error);
     
     // Xử lý các lỗi phổ biến
-    if (error.message?.includes('API key')) {
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
       throw new Error('API key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.');
     }
     
-    if (error.message?.includes('quota')) {
+    if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
       throw new Error('API key đã vượt quá giới hạn sử dụng. Vui lòng thử lại sau.');
     }
 
