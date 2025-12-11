@@ -3,11 +3,15 @@ import Header from './components/Header';
 import LessonForm from './components/LessonForm';
 import ContentInput from './components/ContentInput';
 import ResultDisplay from './components/ResultDisplay';
+import ApiKeyManager from './components/ApiKeyManager';
 import { Subject, Textbook } from './types';
 import { generateNLSLessonPlan } from './services/geminiService';
 import { Sparkles, Settings2 } from 'lucide-react';
 
 const App: React.FC = () => {
+  // API Key State
+  const [userApiKey, setUserApiKey] = useState<string>('');
+
   // State for Form
   const [textbook, setTextbook] = useState<Textbook>(Textbook.CTST);
   const [subject, setSubject] = useState<Subject>(Subject.TOAN);
@@ -26,7 +30,16 @@ const App: React.FC = () => {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const handleApiKeySet = (apiKey: string) => {
+    setUserApiKey(apiKey);
+  };
+
   const handleProcess = async () => {
+    if (!userApiKey) {
+      setError("Vui lòng cấu hình API key trước khi sử dụng.");
+      return;
+    }
+
     if (!lessonContent || lessonContent.trim().length === 0) {
       setError("Vui lòng tải lên file giáo án (Giáo án trống hoặc chưa được tải).");
       return;
@@ -37,20 +50,21 @@ const App: React.FC = () => {
     setResult(null);
 
     try {
-      // Pass both contents to service
+      // Pass API key to service
       const generatedText = await generateNLSLessonPlan(
         { 
-            textbook, 
-            subject, 
-            grade, 
-            content: lessonContent,
-            distributionContent: distributionContent 
+          textbook, 
+          subject, 
+          grade, 
+          content: lessonContent,
+          distributionContent: distributionContent 
         },
-        { analyzeOnly, detailedReport, comparisonExport: false }
+        { analyzeOnly, detailedReport, comparisonExport: false },
+        userApiKey // Pass user's API key
       );
 
       if (!generatedText || generatedText.trim().length === 0) {
-          throw new Error("AI trả về kết quả rỗng. Vui lòng thử lại với file giáo án rõ ràng hơn.");
+        throw new Error("AI trả về kết quả rỗng. Vui lòng thử lại với file giáo án rõ ràng hơn.");
       }
 
       setResult(generatedText);
@@ -67,10 +81,23 @@ const App: React.FC = () => {
       <Header />
       
       <main className="max-w-5xl mx-auto px-4 mt-8">
+        {/* API Key Manager */}
+        {!userApiKey && (
+          <div className="mb-6">
+            <ApiKeyManager onApiKeySet={handleApiKeySet} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Left Column: Inputs */}
           <div className="lg:col-span-2 space-y-6">
+            {userApiKey && (
+              <div className="mb-4">
+                <ApiKeyManager onApiKeySet={handleApiKeySet} />
+              </div>
+            )}
+
             <LessonForm 
               textbook={textbook} setTextbook={setTextbook}
               subject={subject} setSubject={setSubject}
@@ -78,15 +105,15 @@ const App: React.FC = () => {
             />
             
             <ContentInput 
-                lessonContent={lessonContent} 
-                setLessonContent={setLessonContent}
-                distributionContent={distributionContent}
-                setDistributionContent={setDistributionContent}
+              lessonContent={lessonContent} 
+              setLessonContent={setLessonContent}
+              distributionContent={distributionContent}
+              setDistributionContent={setDistributionContent}
             />
             
             {/* Options Panel */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
-               <div className="flex items-center mb-4">
+              <div className="flex items-center mb-4">
                 <Settings2 className="text-blue-600 mr-2" size={20} />
                 <h3 className="font-semibold text-blue-900">Tùy chọn nâng cao</h3>
               </div>
@@ -120,9 +147,9 @@ const App: React.FC = () => {
             
             <button
               onClick={handleProcess}
-              disabled={loading}
+              disabled={loading || !userApiKey}
               className={`w-full py-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 text-white font-bold text-lg transition-all transform hover:-translate-y-1 ${
-                loading 
+                loading || !userApiKey
                   ? 'bg-slate-400 cursor-not-allowed' 
                   : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:shadow-blue-500/30'
               }`}
@@ -143,6 +170,10 @@ const App: React.FC = () => {
             <div className="bg-blue-800 text-white p-6 rounded-xl shadow-md">
               <h3 className="font-bold text-lg mb-4">Hướng dẫn nhanh</h3>
               <ul className="space-y-3 text-blue-100 text-sm">
+                <li className="flex items-start">
+                  <span className="bg-blue-600 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">0</span>
+                  Cấu hình API key từ Google AI Studio.
+                </li>
                 <li className="flex items-start">
                   <span className="bg-blue-600 rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5">1</span>
                   Chọn thông tin bộ sách, môn học và khối lớp.
@@ -181,7 +212,7 @@ const App: React.FC = () => {
 
         {/* Result Section */}
         <div className="mt-8">
-           <ResultDisplay result={result} loading={loading} />
+          <ResultDisplay result={result} loading={loading} />
         </div>
       </main>
       
