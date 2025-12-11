@@ -3,7 +3,7 @@ import { NLS_FRAMEWORK_DATA, SYSTEM_INSTRUCTION } from '../constants';
 
 // Dynamic import để tránh lỗi build
 async function getGeminiAI(apiKey: string) {
-  const { GoogleGenerativeAI } = await import('@google/genai');
+  const { GoogleAIFileManager, GoogleGenerativeAI } = await import('@google/generative-ai');
   return new GoogleGenerativeAI(apiKey);
 }
 
